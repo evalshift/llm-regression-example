@@ -1,0 +1,58 @@
+# The shortcut described at the end of the post: the same flow as
+# build_golden.py + checks.py + run_eval.py, run by the EvalShift CLI.
+#
+#   pip install evalshift
+#   EVALSHIFT_CAPTURE=1 <exercise your agent>   # the SDK records real runs
+#   evalshift capture sync                      # captures -> golden suite + suites: block below
+#   evalshift compare                           # baseline vs candidate, report.html, verdict
+#
+# Docs: https://www.evalshift.dev/docs
+version: 1
+
+prompts:
+  - id: replay
+    detection: manual
+    content: "{input}"
+    variables: [input]
+
+defaults:
+  source_model: claude-sonnet-5
+  target_model: claude-sonnet-5-5
+  concurrency: 4
+  max_cost_usd: 5.0
+  max_tokens: 4096
+
+evaluators:
+  # The hand-written contract rules from checks.py, as trace invariants.
+  trace_invariants:
+    - name: agent_contract
+      rules:
+        - id: no-relative-dates
+          type: arguments
+          tool: get_schedule
+          json_schema:
+            type: object
+            required: [date]
+            properties:
+              date: {type: string, pattern: "^\\d{4}-\\d{2}-\\d{2}$"}
+        - id: iso-currencies
+          type: arguments
+          tool: convert_currency
+          json_schema:
+            type: object
+            properties:
+              from_currency: {enum: [USD, EUR, GBP, JPY, CHF]}
+              to_currency: {enum: [USD, EUR, GBP, JPY, CHF]}
+
+migration_policy:
+  max_overall_regression_rate: 0.30
+  max_critical_regressions: 1
+  min_equivalence_rate: 0.75
+  max_tool_argument_drift: 0.20
+  max_tool_divergence: 0.20
+  max_invariant_violations: 1
+  max_cost_increase: 0.50
+  max_latency_increase: 0.30
+
+# `evalshift capture sync` fills this in from the recorded captures.
+suites: {}

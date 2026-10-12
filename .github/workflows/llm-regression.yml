@@ -1,0 +1,42 @@
+name: llm-regression
+
+# Run only when something that can move the numbers changes: the prompts and
+# model names (agent.py), the assertions, the golden set, or the runner.
+on:
+  pull_request:
+    paths:
+      - agent.py
+      - checks.py
+      - golden.jsonl
+      - run_eval.py
+      - .github/workflows/llm-regression.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+
+      # The baseline is the model production runs today. Its outputs only
+      # change when the prompt or the golden set changes, so key the cache on
+      # those and the candidate is the only side that gets re-run per PR.
+      # (This repo commits results/ so it runs offline; in your own repo add
+      # results/ to .gitignore and let this cache carry the baseline.)
+      - name: Restore cached baseline results
+        uses: actions/cache@v4
+        with:
+          path: results/claude-sonnet-5.jsonl
+          key: baseline-claude-sonnet-5-${{ hashFiles('golden.jsonl', 'agent.py') }}
+
+      - name: Baseline vs candidate
+        run: python run_eval.py --repeats 1 --max-drop 0.02

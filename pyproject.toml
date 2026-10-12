@@ -1,0 +1,21 @@
+[project]
+name = "llm-regression-example"
+version = "0.1.0"
+description = "Catch LLM regressions before a model upgrade ships: golden set, assertions, baseline-vs-candidate diff, CI gate."
+requires-python = ">=3.11"
+dependencies = ["anthropic>=1.13.0"]
+
+[dependency-groups]
+dev = ["pytest>=8.3.0", "ruff>=0.8.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]  # prompts are long strings
